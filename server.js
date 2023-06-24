@@ -1,65 +1,77 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
-const ShortUrl = require('./models/shortUrl')
-const app = express();
+const ShortUrl = require('./models/shortUrl');
 
-mongoose.connect('process.env.MONGO_URL',{
-       useNewUrlParser: true, 
-       useUnifiedTopology : true,
-})
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+mongoose.connect('mongodb://0.0.0.0:27017/url-Shortner', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+app.set('view engine', 'ejs');
+app.use(express.urlencoded({ extended: false }));
+
+// MongoDB connection
 const connection = mongoose.connection;
 connection.once('open', () => {
   console.log("MongoDB database connected");
-})
+});
 
+// Routes
+app.get('/', getShortUrls);
+app.post('/shortUrls', createShortUrl);
+app.get('/:shortUrl', redirectShortUrl);
 
-app.set('view engine','ejs')
-app.use(express.urlencoded({extended:false}))
+// Route handlers
+async function getShortUrls(req, res) {
+  const searchText = req.query.q;
+  let shortUrls;
 
+  if (searchText) {
+    shortUrls = await findShortUrls({ $or: [
+      { full: { $regex: searchText, $options: 'i' } },
+      { short: { $regex: searchText, $options: 'i' } },
+      { note: { $regex: searchText, $options: 'i' } },
+    ]});
+  } else {
+    shortUrls = await findShortUrls();
+  }
 
+  res.render('index', { shortUrls });
+}
 
-// Search route
-app.get('/', async (req, res) => {
-       const searchText = req.query.q; 
-       let shortUrls;
-       if (searchText) {
-           shortUrls = await ShortUrl.find({
-               $or: [
-                   { full: { $regex: searchText, $options: 'i' } }, 
-                   { short: { $regex: searchText, $options: 'i' } }, 
-                   { note: { $regex: searchText, $options: 'i' } }, 
-               ],
-           }).exec();
-       } else {
-           shortUrls = await ShortUrl.find().exec(); // Fetch all short URLs if no search query provided
-       }
-       res.render('index', { shortUrls });
-       
-   });
-   
-   // URL Short route
-   app.post('/shortUrls', async (req, res) => {
-       const { fullUrl, note } = req.body;
-       const existingShortUrl = await ShortUrl.findOne({ full: fullUrl });
-   
-       if (existingShortUrl) {
-           res.render('index', { shortUrls: await ShortUrl.find() });
-       } else {
-           await ShortUrl.create({ full: fullUrl, note:note});
-           res.redirect('/');
-       }
-   });
-    
+async function createShortUrl(req, res) {
+  const { fullUrl, note } = req.body;
+  const existingShortUrl = await ShortUrl.findOne({ full: fullUrl });
 
-   
-app.get('/:shortUrl', async (req, res) => {
-    const shortUrl = await ShortUrl.findOne({ short: req.params.shortUrl });
-    if (!shortUrl) return res.sendStatus(404);
-    shortUrl.clicks++;
-    shortUrl.save();
-    res.redirect(shortUrl.full);
-  });
-  app.listen(process.env.PORT || 5000, () => {
-    console.log('Server is running on port 5000');
-  });
+  if (existingShortUrl) {
+    res.render('index', { shortUrls: await findShortUrls() });
+  } else {
+    await ShortUrl.create({ full: fullUrl, note });
+    res.redirect('/');
+  }
+}
+
+async function redirectShortUrl(req, res) {
+  const shortUrl = await ShortUrl.findOne({ short: req.params.shortUrl });
+
+  if (!shortUrl) {
+    return res.sendStatus(404);
+  }
+
+  shortUrl.clicks++;
+  await shortUrl.save();
+  res.redirect(shortUrl.full);
+}
+
+// Utility functions
+async function findShortUrls(query = {}) {
+  return ShortUrl.find(query).exec();
+}
+
+// Server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
