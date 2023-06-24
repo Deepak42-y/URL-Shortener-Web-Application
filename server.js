@@ -5,7 +5,7 @@ const ShortUrl = require('./models/shortUrl');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-mongoose.connect('mongodb://0.0.0.0:27017/url-Shortner', {
+mongoose.connect('mongodb+srv://honestharry1980:deepak123@cluster0.fnheffu.mongodb.net/?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -75,3 +75,6 @@ async function findShortUrls(query = {}) {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+
+//mongodb+srv://honestharry1980:<password>@cluster0.fnheffu.mongodb.net/?retryWrites=true&w=majority
