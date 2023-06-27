@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 mongoose.connect('mongodb+srv://honestharry1980:deepak123@cluster0.fnheffu.mongodb.net/?retryWrites=true&w=majority', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000, // Increased timeout duration to 30 seconds
 });
 
 app.set('view engine', 'ejs');
@@ -30,11 +31,13 @@ async function getShortUrls(req, res) {
   let shortUrls;
 
   if (searchText) {
-    shortUrls = await findShortUrls({ $or: [
-      { full: { $regex: searchText, $options: 'i' } },
-      { short: { $regex: searchText, $options: 'i' } },
-      { note: { $regex: searchText, $options: 'i' } },
-    ]});
+    shortUrls = await findShortUrls({
+      $or: [
+        { full: { $regex: searchText, $options: 'i' } },
+        { short: { $regex: searchText, $options: 'i' } },
+        { note: { $regex: searchText, $options: 'i' } },
+      ],
+    });
   } else {
     shortUrls = await findShortUrls();
   }
@@ -75,6 +78,3 @@ async function findShortUrls(query = {}) {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-
-//mongodb+srv://honestharry1980:<password>@cluster0.fnheffu.mongodb.net/?retryWrites=true&w=majority
